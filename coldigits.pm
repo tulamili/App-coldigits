@@ -1,6 +1,6 @@
 package App::coldigits ;  
-our $VERSION = '0.010' ; 
-our $DATE = '2024-03-16T13:09+09:00' ; 
+our $VERSION = '0.011' ; 
+our $DATE = '2024-03-16T23:27+09:00' ; 
 
 =encoding utf8
 
