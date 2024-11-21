@@ -3,7 +3,7 @@ use 5.014 ; use warnings ;
 use Time::HiRes qw [ gettimeofday tv_interval ] ;
 my ${ dt_start } = [ gettimeofday ] ; 
 use Encode qw[ decode_utf8 encode_utf8 ] ; 
-use Getopt::Std ; getopts '=0:R:i:u:y:' , \my %o  ; 
+use Getopt::Std ; getopts '=0:R:e:i:u:y:' , \my %o  ; 
 use Term::ANSIColor qw[ color :constants ] ; $Term::ANSIColor::AUTORESET = 1 ;
 use FindBin qw[ $Script ] ; 
 use autodie qw [ open ] ;
@@ -14,31 +14,22 @@ use Scalar::Util qw [ dualvar ]  ;
 my $time0 = time ; 
 my $help = 0  ; # オンラインヘルプの文面の表示をしたか否か。
 my $readLines  ; # 読み取った行数
-#my $diffChars = 0 ; # 出力の行数
 my $sec = $o{'@'} // 15 ; # 何秒おきにアラームを発生させるか
-
 our @y_ranges ; # = () ; 
 & y_init () ; 
 
+* R0proc = exists $o{R} && $o{R} eq 0 ? sub {} : sub { s/\r$// } ; 
+* decode = ($o{u}//'') ne 0 ? * decode_utf8 : sub ( $ ) { $_[0] } ; 
 $o{0} //= '-' ; # 行列状の出力で 値が 0 の場合に出力する文字
-$o{q} //= "'" ; # 文字を囲む文字
 my $isep = $o{i} // "\t" ;  # 入力の区切り文字
 
-* R0proc = exists $o{R} && $o{R} eq 0 ? sub {} : sub { s/\r$// } ; 
-* decode = exists $o{u} && $o{u} eq 0 ? * decode_utf8 : sub ( $ ) { $_[0] } ; 
-#binmode STDOUT, ":utf8" ; # unless exists $o{u} && $o{u} eq 0 ;
-
 my @cn =  & colnames if $o{'='} ;  # Column Names の頭文字
-
 my @cd  ; # $c[列番]{桁数} により、0始まり何番の列に、何桁のものが、何件あったかを示す。
 my %dl  ; # $dl{ 桁数} > 0 により、その桁数のものが存在したことを示す。digit length のつもり。
-
-
 my @fm1 ; # $fm1[col] で col番列の桁数の最大値を記録。dualvar であり、その時の最大値の時の、該当文字列も格納。
 my @fm2 ; # %fm1 とよく似ているが、最後の例を取り出す。 dualvar であることは同じ。
 my @fm1C ; # その対応する文字列の出現回数を格納する。
 my @fm2C ; 
-
 
 while( <> ) { 
   chomp ; & R0proc ; 
@@ -58,6 +49,7 @@ while( <> ) {
 } 
 
 # 出力; 
+binmode STDOUT, "utf8" if ($o{u}//'') ne 0 ; 
 my @dl = sort { $a <=> $b } keys %dl ;
 say join "\t" , map { UNDERLINE $_ } 'col' , @dl ,qw[eg1(freq) eg2(freq)];  
 for my $col ( 0 .. $#cd ) {
@@ -66,7 +58,6 @@ for my $col ( 0 .. $#cd ) {
   push @out , $cd[ $col ] { $dl[$_] } // $o{0} for 0 .. $#dl ; 
   push @out , $fm1[ $col ] . '' . FAINT "($fm1C[$col])" ;
   push @out , $fm2[ $col ] . '' . FAINT "($fm2C[$col])" if exists $fm2[ $col ] ; 
-  #push @out , $cd [ $col ] for 0 .. $#dl ;
   say join "\t" , @out ; 
 }
 
@@ -140,6 +131,7 @@ TSV形式ファイルにおいて、各列に何桁の文字列が何件含ま�
 
  -=     : 入力の1行目を、変数名の並びと見なすか。見なした場合、出力の1列目に、列番号の代わりに列名が並ぶ。
  -0 str : 頻度が0の場合に与える文字列
+ -e RGX : 各セルの文字列長を測る代わりに、正規表現RGVをいくつ持っていたかを測るようにする。
  -i str : 入力の区切り文字。未指定なら \t すなわちタブ文字。csvなら -i , のように与える。
  -u 0   : UTF-8 と通常見なすが、そうせず、バイナリのまま処理をする。
  -R 0   : 改行がWindows形式すなわち \r\n であっても、\nしか改行文字と見なさない。(何かこの特殊な用途を想定して実装した。)
