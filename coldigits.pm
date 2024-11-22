@@ -1,6 +1,6 @@
 package App::zerogap ;  
-our $VERSION = '0.012' ; 
-our $DATE = '2024-11-21T18:35+09:00' ; 
+our $VERSION = '0.013' ; 
+our $DATE = '2024-11-22T21:50+09:00' ; 
 
 =encoding utf8
 
