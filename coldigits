@@ -26,41 +26,37 @@ $o{e} = decode ( $o{e} ) if exists $o{e} ;
 * len = ! exists $o{e} ? sub ( $ ) { length $_[0]  } : sub ($) { my @c = $_[0] =~ m/$o{e}/g ; scalar @c } ;
 
 my @cn =  & colnames if $o{'='} ;  # Column Names の頭文字
-my @cd  ; # $c[列番]{桁数} により、0始まり何番の列に、何桁のものが、何件あったかを示す。
-my %dl  ; # $dl{ 桁数} > 0 により、その桁数のものが存在したことを示す。digit length のつもり。
-my @fm1 ; # $fm1[col] で col番列の桁数の最大値を記録。dualvar であり、その時の最大値の時の、該当文字列も格納。
-my @fm2 ; # %fm1 とよく似ているが、最後の例を取り出す。 dualvar であることは同じ。
-my @fm1C ; # その対応する文字列の出現回数を格納する。
-my @fm2C ; 
+my @Cij  ; # $Cij[列番]{桁数} により、0始まり何番の列に、何桁のものが、何件あったかを示す。
+my %Cj  ; # $Cj{ 桁数} > 0 により、その桁数のものが存在したことを示す。digit length のつもり。
+my @E1  ; # $E1[$i] = [入力$i列目(出力$i行目)の最も右のjの値(位置) , 入力での出現値 , その位置と出現値の頻度 ] 。
+my @E2  ; # [位置, 出現値, 頻度]  ; $E2[$j] で $E1[$j] に準じるものになる。 形式は同様。
 
 while( <> ) { 
   chomp ; & R0proc ; 
   my @F = split /$isep/ , decode( $_ ) , -1 ; 
   for ( 0 .. $#F ) { 
-    $cd [ $_ ] { '' }  //= '' ; # 入力の列に対応する出力の行で、何も出力するものが無かった場合でも、全部を表示するためのトリック。
-    my $len = & len ( $F[$_] ) ; 
-    next unless & y_filter ($len) ; # 桁数が範囲外なら読まない
-    $cd [ $_ ] { $len } ++ ; 
-    $dl { $len } ++  ;
-
-    my %f1 ; #  $f1{ $char } でその行にその文字が何回出現したかを格納。
-    do{ $fm1C [ $_ ] = 0 ; $fm1[$_] = dualvar $len,$F[$_] } if ($fm1[$_]//0) < $len ;  # ここでの $_ は列番号である。
-    do{ $fm1C [ $_ ] ++ } if ($fm1[$_]//0) == $len && $fm1[$_] eq $F[$_] ; # dualvar の文字列の方の比較になっている
-    do{ $fm2C[$_]=0; $fm2[$_]=dualvar $len,$F[$_] } if ($fm2[$_]//0)<$len && $fm1[$_]ne$F[$_] &&  $fm1[$_] == $len ; #($fm1[$_]//0) <= $len && 
-    $fm2C[$_] ++ if defined $fm2[$_] && $fm2[$_] eq $F[$_] ; # dualvar の文字列の方の比較になっている    
+    $Cij [ $_ ] { '' }  //= '' ; # 入力の列に対応する出力の行で、何も出力するものが無かった場合でも、全部を表示するためのトリック。
+    my $j = len ( $F[$_] ) ; 
+    next unless & y_filter ( $j ) ; # 桁数が範囲外なら読まない
+    $Cij [ $_ ] { $j } ++ ; 
+    $Cj { $j } ++  ;
+    $E1[$_] = [ $j , $F[$_] , 0 ] if ( $E1[$_]->[0] // "-Inf" ) < $j ;  # ここでの $_ は列番号である。
+    $E1[$_]->[2] ++ if $E1[$_]->[0] == $j && $E1[$_]->[1] eq $F[$_] ; 
+    $E2[$_] = [ $j , $F[$_] , 0 ] if ( $E2[$_]->[0] // "-Inf" ) < $j && $F[$_] ne $E1[$_]->[1] ; # && $E1[$_]->[0] == $j ;  
+    $E2[$_]->[2] ++ if exists $E2[$_]->[1] && $E2[$_]->[1] eq $F[$_] ;     
   }
 } 
 
 # 出力; 
 binmode STDOUT, "utf8" if ($o{u}//'') ne 0 ; 
-my @dl = sort { $a <=> $b } keys %dl ;
-say join "\t" , map { UNDERLINE $_ } YELLOW ('col') , @dl , map { "eg.$_". FAINT "(freq)" } 1..2 ;  
-for my $col ( 0 .. $#cd ) {
+my @Cj = sort { $a <=> $b } keys %Cj ;
+say join "\t" , map { UNDERLINE $_ } YELLOW ('col') , @Cj , map { "eg.$_". FAINT "(freq)" } 1..2 ;  
+for my $i ( 0 .. $#Cij ) {
   my @out ; 
-  push @out , YELLOW $cn [ $col ] // YELLOW $col + 1 ; 
-  push @out , $cd[ $col ] { $dl[$_] } // $o{0} for 0 .. $#dl ; 
-  push @out , $fm1[ $col ] . '' . FAINT "($fm1C[$col])" if exists $fm1[ $col ] ;
-  push @out , $fm2[ $col ] . '' . FAINT "($fm2C[$col])" if exists $fm2[ $col ] ; 
+  push @out , YELLOW $cn [ $i ] // YELLOW $i + 1 ; 
+  push @out , $Cij[ $i ] { $Cj[$_] } // $o{0} for 0 .. $#Cj ; 
+  push @out , $E1[$i]->[1] . '' . FAINT "($E1[$i]->[2])" if exists $E1[$i] ;
+  push @out , $E2[$i]->[1] . '' . FAINT "($E2[$i]->[2])" if exists $E2[$i] ;
   say join "\t" , @out ; 
 }
 
@@ -100,9 +96,6 @@ END {
   return if ($o{2}//'') eq 0 ; 
   my $linenumeral = $readLines > 1 ? 'lines' : 'line' ; 
   print STDERR BOLD FAINT ITALIC & d3 ( $readLines ) . " $linenumeral read" ; 
-  #print STDERR BOLD FAINT ITALIC $o{'='} ? " after $o{q}$head$o{q}. " : ". " ; 
-  #my $charnumeral = $diffChars > 1 ? 'characters' : 'character' ; 
-  #print STDERR BOLD FAINT ITALIC & d3 ( $diffChars ) . " different $charnumeral in input are shown. " ; 
   my $s = tv_interval $dt_start , [ gettimeofday ] ; 
   say STDERR BOLD FAINT ITALIC " -- $Script ; " . $procsec . " sec. in process" ;
 }
