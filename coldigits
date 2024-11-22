@@ -15,7 +15,7 @@ my $time0 = time ;
 my $help = 0  ; # オンラインヘルプの文面の表示をしたか否か。
 my $readLines  ; # 読み取った行数
 my $sec = $o{'@'} // 15 ; # 何秒おきにアラームを発生させるか
-our @y_ranges ; # = () ; 
+our @y_ranges ; 
 & y_init () ; 
 
 * R0proc = exists $o{R} && $o{R} eq 0 ? sub {} : sub { s/\r$// } ; 
@@ -54,10 +54,10 @@ while( <> ) {
 # 出力; 
 binmode STDOUT, "utf8" if ($o{u}//'') ne 0 ; 
 my @dl = sort { $a <=> $b } keys %dl ;
-say join "\t" , map { UNDERLINE $_ } 'col' , @dl ,qw[e.g.1(freq) e.g.2(freq)];  
+say join "\t" , map { UNDERLINE $_ } YELLOW ('col') , @dl , map { "eg.$_". FAINT "(freq)" } 1..2 ;  
 for my $col ( 0 .. $#cd ) {
   my @out ; 
-  push @out , $cn [ $col ] // YELLOW $col + 1 ; 
+  push @out , YELLOW $cn [ $col ] // YELLOW $col + 1 ; 
   push @out , $cd[ $col ] { $dl[$_] } // $o{0} for 0 .. $#dl ; 
   push @out , $fm1[ $col ] . '' . FAINT "($fm1C[$col])" if exists $fm1[ $col ] ;
   push @out , $fm2[ $col ] . '' . FAINT "($fm2C[$col])" if exists $fm2[ $col ] ; 
