@@ -61,7 +61,7 @@ while( <> ) {
 # 出力; 
 binmode STDOUT, "utf8" if ($o{u}//'') ne 0 ; 
 @Cj = sort { $a <=> $b } keys %Cj ;
-say join "\t" , map { UNDERLINE $_ } YELLOW ('col') , @Cj , map { "eg.$_". FAINT "(freq)" } 1..2 ;  
+say join "\t" , map { UNDERLINE $_ } YELLOW ('col') , @Cj , map { ITALIC "eg.$_". FAINT "(freq)" } 1..2 ;  
 for my $i ( 0 .. $#Cij ) {
   my @out ; 
   push @out , YELLOW $cn [ $i ] // YELLOW $i + 1 ; 
