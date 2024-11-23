@@ -3,11 +3,11 @@ use 5.014 ; use warnings ;
 use Time::HiRes qw [ gettimeofday tv_interval ] ;
 my ${ dt_start } = [ gettimeofday ] ; 
 use Encode qw[ decode_utf8 encode_utf8 ] ; 
-use Getopt::Std ; getopts '=0:M:R:e:i:u:y:' , \my %o  ; 
+use Getopt::Std ; getopts '=0:BM:R:e:i:u:v:y:' , \my %o  ; 
 use Term::ANSIColor qw[ color :constants ] ; $Term::ANSIColor::AUTORESET = 1 ;
 use FindBin qw[ $Script ] ; 
 use autodie qw [ open ] ;
-use List::Util qw[ max ] ; 
+use List::Util qw[ min max ] ; 
 use Scalar::Util qw [ dualvar ]  ; 
 
 * d3 = exists $o{','} && $o{','} eq 0 ? sub{$_[0]} : sub { $_[0] =~ s/(?<=\d)(?=(\d\d\d)+($|\D))/,/gr } ;
@@ -40,7 +40,9 @@ my %Cj  ; # $Cj{ 桁数} > 0 により、その桁数のものが存在したこ
 my @Cj  ; # 出力の時に使う。 sort { $a <=> $b } keys %Cj ;
 my @E1  ; # $E1[$i] = [入力$i列目(出力$i行目)の最も右のjの値(位置) , 入力での出現値 , その位置と出現値の頻度 ] 。
 my @E2  ; # [位置, 出現値, 頻度]  ; $E2[$j] で $E1[$j] に準じるものになる。 形式は同様。
+my @out ; # 出力時に、各行で何をタブ区切りで表示するかを格納する。
 
+binmode STDOUT, "utf8" if ($o{u}//'') ne 0 ; 
 goto M if exists $o{M} ; 
 
 while( <> ) { 
@@ -58,23 +60,31 @@ while( <> ) {
   }
 } 
 
-# 出力; 
-binmode STDOUT, "utf8" if ($o{u}//'') ne 0 ; 
+# 出力(1);
+
+#goto B if exists $o{B} ;  
 @Cj = sort { $a <=> $b } keys %Cj ;
-say join "\t" , map { UNDERLINE $_ } YELLOW ('col') , @Cj , map { ITALIC "eg.$_". FAINT "(freq)" } 1..2 ;  
+say join "\t" , map { UNDERLINE $_ } YELLOW ('col') , (!$o{B}? @Cj:qw[min max]) , ($o{v}//'') eq 0 ? () : map { ITALIC "eg.$_". FAINT "(freq)" } 1..2 ;  
 for my $i ( 0 .. $#Cij ) {
-  my @out ; 
+  @out = () ; 
   push @out , YELLOW $cn [ $i ] // YELLOW $i + 1 ; 
-  push @out , $Cij[ $i ] { $Cj[$_] } // $o{0} for 0 .. $#Cj ; 
-  push @out , ITALIC $E1[$i]->[1] . '' . FAINT "($E1[$i]->[2])" if exists $E1[$i]->[2] ;
-  push @out , ITALIC $E2[$i]->[1] . '' . FAINT "($E2[$i]->[2])" if exists $E2[$i]->[2] ;
+  if ( ! $o{B} ) { 
+    push @out , $Cij[ $i ] { $Cj[$_] } // $o{0} for 0 .. $#Cj ;
+  } else { 
+    my ($m1,$m2) = do { my @t = keys %{$Cij[$i] } ; ( min(@t),max(@t) ) } ; 
+    my ($v1,$v2) = ( $Cij[$i]{$m1} , $Cij[$i]{$m2} ) ; 
+    push @out , $m1!=$m2 ? "$m1($v1)" : "$m1($v1)=" , UNDERLINE BOLD($m2)."($v2)" ; 
+  }
+  if ( ! 0 eq ($o{v}//'') ) {  
+    push @out , ITALIC $E1[$i]->[1] . '' . FAINT "($E1[$i]->[2])" if exists $E1[$i]->[2] ;
+    push @out , ITALIC $E2[$i]->[1] . '' . FAINT "($E2[$i]->[2])" if exists $E2[$i]->[2] ;
+  } 
   say join "\t" , @out ; 
 }
-
 exit 0 ;
 
+## -- -
 M : # オプション -M が指定された時。
-
 while( <> ) { 
   chomp ; & R0proc ; 
   my @F = split /$isep/o , decode( $_ ) , -1 ; 
@@ -94,20 +104,20 @@ while( <> ) {
   }
 } 
 
-# 出力; 
+# 出力(-M); 
 my $m = defined $o{M} ? $o{M} : 15 ; # -Mオプションに寄り、出力の各セルに、何文字を超えたら、省略記法にするかについて。
-binmode STDOUT, "utf8" if ($o{u}//'') ne 0 ; 
 @Cj = sort { $a <=> $b } keys %Cj ;
-say join "\t" , map { UNDERLINE $_ } YELLOW ('col') , @Cj , map { "eg.$_". FAINT "(freq)" } 1..2 ;  
+say join "\t" , map { UNDERLINE $_ } YELLOW ('col') , @Cj , ($o{v}//'') eq 0 ? () : map { ITALIC "eg.$_". FAINT "(freq)" } 1..2 ; 
 for my $i ( 0 .. $#Cij ) {
-  my @out ; 
+  @out = () ; 
   push @out , YELLOW $cn [ $i ] // YELLOW $i + 1 ; 
   push @out , do { my @t = sort keys %{ $Cij[$i]{$Cj[$_]} } ; @t > $m ? "$t[0]..$t[-1](".@t.")" : join '', @t }  for 0 .. $#Cj ; 
+  next if ($o{v}//'') eq 0 ; 
   push @out , ITALIC $E1[$i]->[1] . '' . FAINT "($E1[$i]->[2])" if exists $E1[$i]->[2] ;
   push @out , ITALIC $E2[$i]->[1] . '' . FAINT "($E2[$i]->[2])" if exists $E2[$i]->[2] ;
+} continue {
   say join "\t" , @out ; 
 }
-
 exit 0 ; 
 
 ### ヘッダから列名を取得する。 -= が指定された場合のみ
@@ -177,10 +187,13 @@ TSV形式ファイルにおいて、各列に何桁の文字列が何件含ま�
  -e RGX : 各セルの文字列長を測る代わりに、正規表現RGXをいくつ持っていたかを測るようにする。 -e '1' や -e '[0-9]$' や -e '大' を指定可能。
  -i str : 入力の区切り文字。未指定なら \t すなわちタブ文字。csvなら -i , のように与える。
  -u 0   : UTF-8 と通常見なすが、そうせず、バイナリのまま処理をする。
+ -v 0   : 具体的な出現値2個を表示しない。
  -y ... : 出力表の表頭に現れる数値を限定する。..や,を使う。例、 2..5 または 1,2,10 など。
+ -B     : 出力表の、各列の最も数値が大きい部分のみ表示する。(出力表が横に長すぎる場合に使う。)
+ -M N  : 同じセルに2回以上現れた文字を、何回出現したものが、どんな文字があったかを、出力表の形で、出力する。 ..で範囲表示(N通りを越えた場合)。()内の数は該当する異なる文字の数。
  -R 0   : 改行がWindows形式すなわち \r\n であっても、\nしか改行文字と見なさない。(何かこの特殊な用途を想定して実装した。)
 
- -M     : 同じセルに2回以上現れた文字を、何回出現したものが、どんな文字があったかを、出力表の形で、出力する。 ..で範囲表示。()内の数は該当する異なる文字の数。
+
 
  --help : このオンラインのヘルプ画面を出力する。 perldoc $0 や man $0 でも可能であろう。
 
