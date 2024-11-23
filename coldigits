@@ -89,7 +89,7 @@ sub output () {
     } else { 
       my ($m1,$m2) = do { my @t = keys %{$Cij[$i] } ; ( min(@t) , max(@t) ) } ; 
       next if ! defined $m1 ; # continue 節に 飛ぶ。
-      my ($v1,$v2) = map { $neoM ? "#=$Cij[$i]{$_}": cseq( $lc, $i , $_ ) } $m1 , $m2  ;  # <-- - 
+      my ($v1,$v2) = map { $neoM ? "$Cij[$i]{$_}": cseq( $lc, $i , $_ ) } $m1 , $m2  ;  # <-- - 
       push @out , $m1!=$m2  ?  "$m1\[$v1\]"  :  "$m1\[$v1\]=" , UNDERLINE BOLD($m2)."[$v2]" ; 
     }
     if ( not 0 eq ($o{v}//'') ) {  # 入力で与えられた出現値の具体例を与える。
