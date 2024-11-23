@@ -15,7 +15,9 @@ my $time0 = time ;
 my $help = 0  ; # オンラインヘルプの文面の表示をしたか否か。
 my $readLines  ; # 読み取った行数
 my $sec = $o{'@'} // 15 ; # 何秒おきにアラームを発生させるか
-$o{y} //= "2.." if $o{M} ; 
+my $neoM = ! exists $o{M} ; 
+my $noB = ! $o{B} ;
+$o{y} //= "2.." if ! $neoM ; 
 our @y_ranges ; 
 & y_init () ; 
 
@@ -34,8 +36,7 @@ my $isep = $o{i} // "\t" ;  # 入力の区切り文字
 $o{e} = decode ( $o{e} ) if exists $o{e} ;
 * len = ! exists $o{e} ? sub ( $ ) { length $_[0]  } : sub ($) { my @c = $_[0] =~ m/$o{e}/g ; scalar @c } ;
 
-my $neoM = ! exists $o{M} ; 
-my $noB = ! $o{B} ; 
+ 
 my @cn =  & colnames if $o{'='} ;  # Column Names の頭文字
 my @Cij  ; # $Cij[列番]{桁数} により、0始まり何番の列に、何桁のものが、何件あったかを示す。
 my %Cj  ; # $Cj{ 桁数} > 0 により、その桁数のものが存在したことを示す。digit length のつもり。
@@ -71,9 +72,7 @@ sub cseq ( $$$ ) {  # 出力の各セルにおいて、出現した文字の全�
   my $lc = $_[0] ; # limit char 
   my $i = $_[1] ;  # 出力の各行(入力の各列)に対応
   my $j = $_[2] ;  # 出力の各列(集計した時の仕分け先)に対応
-  #my @Z = sort keys %{ $Cij[$i]{$Cj[$j]} } ; #  文字列 $Cij[$i]{$x}で入力$i番目の列に、文字$xを持つセルの、出現件数を示す。$Cj[$j]で、その出現件数の、頻度数を表す。
   my @Z = sort keys %{  $Cij [$i] { $_[2] }  } ; #  文字列 $Cij[$i]{$x}で入力$i番目の列に、文字$xを持つセルの、出現件数を示す。$Cj[$j]で、その出現件数の、頻度数を表す。
-  #return @Z > $lc ? do{ $Z[1] //= '' ; $Z[-1] //= '' ; "$Z[0]$Z[1]..$Z[-2]$Z[-1]" . FAINT "(".@Z.")" }  : @Z ? join ('', @Z). FAINT "(".@Z.")" : FAINT $o{0} ;
   return @Z > $lc ? do{ $_ //= '' for 1,2,-3,-2  ; "$Z[0]$Z[1]$Z[2]..$Z[-3]$Z[-2]$Z[-1]" . FAINT "(".@Z.")" }  : @Z ? join ('', @Z). FAINT "(".@Z.")" : FAINT $o{0} ;
 }
 
@@ -101,12 +100,6 @@ sub output () {
     say join "\t" , @out ; 
   }
 }
-
-=for comment 
-# 出力(-M); 
-  push @out , do { my @t = sort keys %{ $Cij[$i]{$Cj[$_]} } ; @t > $m ? "$t[0]..$t[-1](".@t.")" : join '', @t }  for 0 .. $#Cj ; 
-
-=cut 
 
 ### ヘッダから列名を取得する。 -= が指定された場合のみ
 sub colnames ( ) {  
